@@ -10,6 +10,8 @@ import (
 )
 
 // Plugin implements drone.Plugin to provide the plugin implementation.
+//
+//nolint:govet
 type Plugin struct {
 	settings Settings
 	pipeline drone.Pipeline

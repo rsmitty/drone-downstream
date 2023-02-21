@@ -3,7 +3,7 @@
 // Use of this source code is governed by an Apache 2.0 license that can be
 // found in the LICENSE file.
 
-package plugin
+package plugin //nolint:testpackage
 
 import (
 	"reflect"
@@ -11,8 +11,7 @@ import (
 )
 
 func Test_parseRepoBranch(t *testing.T) {
-
-	var tests = []struct {
+	tests := []struct {
 		Repo   string
 		Owner  string
 		Name   string
@@ -21,16 +20,16 @@ func Test_parseRepoBranch(t *testing.T) {
 		{"octocat/hello-world", "octocat", "hello-world", ""},
 		{"octocat/hello-world@master", "octocat", "hello-world", "master"},
 	}
-
 	for _, test := range tests {
-
 		owner, name, branch := parseRepoBranch(test.Repo)
 		if owner != test.Owner {
 			t.Errorf("wanted repository owner %s, got %s", test.Owner, owner)
 		}
+
 		if name != test.Name {
 			t.Errorf("wanted repository name %s, got %s", test.Name, name)
 		}
+
 		if branch != test.Branch {
 			t.Errorf("wanted repository branch %s, got %s", test.Branch, branch)
 		}
@@ -45,7 +44,8 @@ func Test_parseParams_invalid(t *testing.T) {
 }
 
 func Test_parseParams(t *testing.T) {
-	var tests = []struct {
+	//nolint: govet
+	tests := []struct {
 		Input  []string
 		Output map[string]string
 	}{
@@ -56,7 +56,8 @@ func Test_parseParams(t *testing.T) {
 		},
 		{
 			[]string{"where=very=far"},
-			map[string]string{"where": "very=far"}},
+			map[string]string{"where": "very=far"},
+		},
 		{
 			[]string{"test_params.env"},
 			map[string]string{
@@ -96,7 +97,7 @@ func Test_parseParams(t *testing.T) {
 }
 
 func Test_getServerWithDefaults(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		Server string
 		Host   string
 		Proto  string

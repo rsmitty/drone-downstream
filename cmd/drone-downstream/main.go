@@ -5,16 +5,18 @@
 
 // DO NOT MODIFY THIS FILE DIRECTLY
 
+// package main	is the main package for the drone-downstream plugin.
 package main
 
 import (
 	"os"
 
-	"github.com/drone-plugins/drone-downstream/plugin"
 	"github.com/drone-plugins/drone-plugin-lib/errors"
 	"github.com/drone-plugins/drone-plugin-lib/urfave"
 	"github.com/joho/godotenv"
 	"github.com/urfave/cli/v2"
+
+	"github.com/siderolabs/drone-downstream/internal/plugin"
 )
 
 var version = "unknown"
@@ -23,7 +25,7 @@ func main() {
 	settings := &plugin.Settings{}
 
 	if _, err := os.Stat("/run/drone/env"); err == nil {
-		godotenv.Overload("/run/drone/env")
+		godotenv.Overload("/run/drone/env") //nolint:errcheck
 	}
 
 	app := &cli.App{
@@ -50,7 +52,7 @@ func run(settings *plugin.Settings) cli.ActionFunc {
 		)
 
 		if err := plugin.Validate(); err != nil {
-			if e, ok := err.(errors.ExitCoder); ok {
+			if e, ok := err.(errors.ExitCoder); ok { //nolint:errorlint
 				return e
 			}
 
@@ -58,7 +60,7 @@ func run(settings *plugin.Settings) cli.ActionFunc {
 		}
 
 		if err := plugin.Execute(); err != nil {
-			if e, ok := err.(errors.ExitCoder); ok {
+			if e, ok := err.(errors.ExitCoder); ok { //nolint:errorlint
 				return e
 			}
 

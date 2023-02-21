@@ -3,13 +3,15 @@
 // Use of this source code is governed by an Apache 2.0 license that can be
 // found in the LICENSE file.
 
+// package main	is the main package for the drone-downstream plugin.
 package main
 
 import (
 	"time"
 
-	"github.com/drone-plugins/drone-downstream/plugin"
 	"github.com/urfave/cli/v2"
+
+	"github.com/siderolabs/drone-downstream/internal/plugin"
 )
 
 // settingsFlags has the cli.Flags for the plugin.Settings.

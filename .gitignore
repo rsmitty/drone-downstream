@@ -1,5 +1,5 @@
-/release/
-/drone-downstream*
+# THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
+#
+# Generated on 2023-02-21T13:46:26Z by kres c5a5c73-dirty.
 
-coverage.out
-.drone.yml
+_out

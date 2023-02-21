@@ -3,6 +3,7 @@
 // Use of this source code is governed by an Apache 2.0 license that can be
 // found in the LICENSE file.
 
+// Package plugin contains the implementation of the Drone plugin.
 package plugin
 
 import (
@@ -22,6 +23,8 @@ import (
 )
 
 // Settings for the plugin.
+//
+//nolint:govet
 type Settings struct {
 	Repos          cli.StringSlice
 	Server         string
@@ -56,8 +59,9 @@ func (p *Plugin) Validate() error {
 
 	var err error
 	p.settings.params, err = parseParams(p.settings.Params.Value())
+
 	if err != nil {
-		return fmt.Errorf("unable to parse params: %s", err)
+		return fmt.Errorf("unable to parse params: %w", err)
 	}
 
 	upstreamBuildNumber, ok := os.LookupEnv("DRONE_BUILD_NUMBER")
@@ -78,20 +82,21 @@ func (p *Plugin) Validate() error {
 }
 
 // Execute provides the implementation of the plugin.
+//
+//nolint:gocognit,cyclop,gocyclo,maintidx
 func (p *Plugin) Execute() error {
 	config := new(oauth2.Config)
 
-	auther := config.Client(
+	author := config.Client(
 		context.WithValue(context.Background(), oauth2.HTTPClient, p.network.Client),
 		&oauth2.Token{
 			AccessToken: p.settings.Token,
 		},
 	)
 
-	client := drone.NewClient(p.settings.server, auther)
+	client := drone.NewClient(p.settings.server, author)
 
 	for _, entry := range p.settings.Repos.Value() {
-
 		// parses the repository name in owner/name@branch format
 		owner, name, branch := parseRepoBranch(entry)
 		if len(owner) == 0 || len(name) == 0 {
@@ -103,6 +108,7 @@ func (p *Plugin) Execute() error {
 			if branch == "" {
 				return fmt.Errorf("build no or branch must be mentioned for deploy, format repository@build/branch")
 			}
+
 			if _, err := strconv.Atoi(branch); err != nil && !p.settings.LastSuccessful {
 				return fmt.Errorf("for deploy build no must be numeric only " +
 					" or for branch deploy last_successful should be true," +
@@ -113,8 +119,7 @@ func (p *Plugin) Execute() error {
 		waiting := false
 
 		timeout := time.After(p.settings.Timeout)
-		//lint:ignore SA1015 refactor later
-		tick := time.Tick(1 * time.Second)
+		tick := time.Tick(1 * time.Second) //nolint:staticcheck
 
 		var err error
 
@@ -133,14 +138,15 @@ func (p *Plugin) Execute() error {
 					var build *drone.Build
 					if p.settings.LastSuccessful {
 						// Get the last successful build of branch
-						builds, err := client.BuildList(owner, name, drone.ListOptions{})
-						if err != nil {
+						builds, buildErr := client.BuildList(owner, name, drone.ListOptions{})
+						if buildErr != nil {
 							return fmt.Errorf("unable to get build list for %s", entry)
 						}
 
 						for _, b := range builds {
 							if b.Source == branch && b.Status == drone.StatusPassing {
 								build = b
+
 								break
 							}
 						}
@@ -149,7 +155,7 @@ func (p *Plugin) Execute() error {
 						}
 					} else {
 						// Get build by number
-						buildNumber, _ := strconv.Atoi(branch)
+						buildNumber, _ := strconv.Atoi(branch) //nolint:errcheck
 						build, err = client.Build(owner, name, buildNumber)
 						if err != nil {
 							return fmt.Errorf("unable to get requested build %v for deploy for %s", buildNumber, entry)
@@ -158,6 +164,7 @@ func (p *Plugin) Execute() error {
 					if p.settings.Wait && !waiting && (build.Status == drone.StatusRunning || build.Status == drone.StatusPending) {
 						fmt.Printf("BuildLast for repository: %s, returned build number: %v with a status of %s. Will retry for %v.\n", entry, build.Number, build.Status, p.settings.Timeout)
 						waiting = true
+
 						continue
 					}
 					if (build.Status != drone.StatusRunning && build.Status != drone.StatusPending) || !p.settings.Wait {
@@ -168,7 +175,8 @@ func (p *Plugin) Execute() error {
 							if waiting {
 								continue
 							}
-							return fmt.Errorf("unable to trigger deploy for %s - err %v", entry, err)
+
+							return fmt.Errorf("unable to trigger deploy for %s - err %w", entry, err)
 						}
 						fmt.Printf("starting deploy for %s/%s env - %s build - %d\n", owner, name, p.settings.Deploy, build.Number)
 						logParams(p.settings.params, p.settings.ParamsEnv.Value())
@@ -190,15 +198,17 @@ func (p *Plugin) Execute() error {
 					if waiting {
 						continue
 					}
-					return fmt.Errorf("unable to get latest build for %s: %s", entry, err)
+
+					return fmt.Errorf("unable to get latest build for %s: %w", entry, err)
 				}
 				if p.settings.Wait && !waiting && (build.Status == drone.StatusRunning || build.Status == drone.StatusPending) {
 					fmt.Printf("BuildLast for repository: %s, returned build number: %v with a status of %s. Will retry for %v.\n", entry, build.Number, build.Status, p.settings.Timeout)
 					waiting = true
+
 					continue
 				} else if p.settings.LastSuccessful && build.Status != drone.StatusPassing {
-					builds, err := client.BuildList(owner, name, drone.ListOptions{})
-					if err != nil {
+					builds, buildErr := client.BuildList(owner, name, drone.ListOptions{})
+					if buildErr != nil {
 						return fmt.Errorf("unable to get build list for %s", entry)
 					}
 
@@ -206,6 +216,7 @@ func (p *Plugin) Execute() error {
 					for _, b := range builds {
 						if b.Source == branch && b.Status == drone.StatusPassing {
 							build = b
+
 							break
 						}
 					}
@@ -222,6 +233,7 @@ func (p *Plugin) Execute() error {
 						if waiting {
 							continue
 						}
+
 						return fmt.Errorf("unable to trigger build for %s", entry)
 					}
 					fmt.Printf("Restarting build %d for %s\n", build.Number, entry)
@@ -261,11 +273,13 @@ func parseRepoBranch(repo string) (string, string, string) {
 		owner = parts[0]
 		name = parts[1]
 	}
+
 	return owner, name, branch
 }
 
 func parseParams(paramList []string) (map[string]string, error) {
 	params := make(map[string]string)
+
 	for _, p := range paramList {
 		parts := strings.SplitN(p, "=", 2)
 		if len(parts) == 2 {
@@ -293,17 +307,22 @@ func parseParams(paramList []string) (map[string]string, error) {
 func logParams(params map[string]string, paramsEnv []string) {
 	if len(params) > 0 {
 		fmt.Println("  with params:")
+
 		for k, v := range params {
 			fromEnv := false
+
 			for _, e := range paramsEnv {
 				if k == e {
 					fromEnv = true
+
 					break
 				}
 			}
+
 			if fromEnv {
 				v = "[from-environment]"
 			}
+
 			fmt.Printf("  - %s: %s\n", k, v)
 		}
 	}
@@ -326,20 +345,20 @@ func blockUntilBuildIsFinished(p *Plugin, client drone.Client, namespace, name s
 
 	timeout := time.After(p.settings.BlockTimeout)
 
-	//lint:ignore SA1015 refactor later
-	tick := time.Tick(10 * time.Second)
+	tick := time.Tick(10 * time.Second) //nolint:staticcheck
 
 	// listen for SIGINT and SIGTERM to cancel downstream build when stopping this executable
 	// this does not work in drone because drone uses SIGKILL to terminate its containers
 	// but when running the plugin locally during development, it's very handy
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
 	defer close(sigs)
 
 	for {
 		select {
 		case <-sigs:
-			err := client.BuildCancel(namespace, name, int(buildNumber))
+			err := client.BuildCancel(namespace, name, buildNumber)
 			if err != nil {
 				return fmt.Errorf("could not cancel downstream job %d", buildNumber)
 			}
