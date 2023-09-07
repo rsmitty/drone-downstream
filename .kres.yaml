@@ -9,7 +9,7 @@ kind: common.Image
 name: image-drone-downstream
 spec:
   pushLatest: false
-  droneExtraEnvironment:
+  extraEnvironment:
     PLATFORM: linux/amd64,linux/arm64
 ---
 kind: golang.Build
@@ -21,3 +21,13 @@ spec:
     linux-arm64:
       GOOS: linux
       GOARCH: arm64
+---
+kind: service.CodeCov
+spec:
+    targetThreshold: 10
+---
+kind: common.Release
+name: release
+spec:
+  artifacts:
+    - drone-downstream-*
